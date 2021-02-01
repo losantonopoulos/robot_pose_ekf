@@ -134,6 +134,7 @@ private:
   MatrixWrapper::SymmetricMatrix odom_covariance_, imu_covariance_, vo_covariance_, gps_covariance_;
   bool debug_, self_diagnose_;
   std::string output_frame_, base_footprint_frame_, tf_prefix_;
+  std::string odom_topic_, vo_topic_, imu_topic_, gps_topic_;
 
   // log files for debugging
   std::ofstream odom_file_, imu_file_, vo_file_, gps_file_, corr_file_, time_file_, extra_file_;

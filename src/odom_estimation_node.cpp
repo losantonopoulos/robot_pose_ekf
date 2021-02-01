@@ -83,12 +83,23 @@ namespace estimation
     nh_private.param("gps_used",   gps_used_, false);
     nh_private.param("debug",   debug_, false);
     nh_private.param("self_diagnose",  self_diagnose_, false);
+
+    nh_private.param("odom_topic", odom_topic_, std::string("odom"));
+    nh_private.param("vo_topic",   vo_topic_,   std::string("vo"));
+    nh_private.param("imu_topic",  imu_topic_,  std::string("imu_data"));
+    nh_private.param("gps_topic",  gps_topic_,  std::string("gps"));
+
     double freq;
     nh_private.param("freq", freq, 30.0);
 
     tf_prefix_ = tf::getPrefixParam(nh_private);
     output_frame_ = tf::resolve(tf_prefix_, output_frame_);
     base_footprint_frame_ = tf::resolve(tf_prefix_, base_footprint_frame_);
+
+    ROS_INFO_STREAM("odom_topic: " << odom_topic_);
+    ROS_INFO_STREAM("vo_topic: "   << vo_topic_);
+    ROS_INFO_STREAM("imu_topic: "  << imu_topic_);
+    ROS_INFO_STREAM("gps_topic: "  << gps_topic_);
 
     ROS_INFO_STREAM("output frame: " << output_frame_);
     ROS_INFO_STREAM("base frame: " << base_footprint_frame_);
@@ -109,27 +120,27 @@ namespace estimation
     // subscribe to odom messages
     if (odom_used_){
       ROS_DEBUG("Odom sensor can be used");
-      odom_sub_ = nh.subscribe("odom", 10, &OdomEstimationNode::odomCallback, this);
+      odom_sub_ = nh.subscribe(odom_topic_.c_str(), 10, &OdomEstimationNode::odomCallback, this);
     }
     else ROS_DEBUG("Odom sensor will NOT be used");
 
     // subscribe to imu messages
     if (imu_used_){
       ROS_DEBUG("Imu sensor can be used");
-      imu_sub_ = nh.subscribe("imu_data", 10,  &OdomEstimationNode::imuCallback, this);
+      imu_sub_ = nh.subscribe(imu_topic_.c_str(), 10,  &OdomEstimationNode::imuCallback, this);
     }
     else ROS_DEBUG("Imu sensor will NOT be used");
 
     // subscribe to vo messages
     if (vo_used_){
       ROS_DEBUG("VO sensor can be used");
-      vo_sub_ = nh.subscribe("vo", 10, &OdomEstimationNode::voCallback, this);
+      vo_sub_ = nh.subscribe(vo_topic_.c_str(), 10, &OdomEstimationNode::voCallback, this);
     }
     else ROS_DEBUG("VO sensor will NOT be used");
 
     if (gps_used_){
       ROS_DEBUG("GPS sensor can be used");
-      gps_sub_ = nh.subscribe("gps", 10, &OdomEstimationNode::gpsCallback, this);
+      gps_sub_ = nh.subscribe(gps_topic_.c_str(), 10, &OdomEstimationNode::gpsCallback, this);
     }
     else ROS_DEBUG("GPS sensor will NOT be used");
 
@@ -149,9 +160,6 @@ namespace estimation
     }
   };
 
-
-
-
   // destructor
   OdomEstimationNode::~OdomEstimationNode(){
 
@@ -167,8 +175,6 @@ namespace estimation
 
 
 
-
-
   // callback function for odom data
   void OdomEstimationNode::odomCallback(const OdomConstPtr& odom)
   {
@@ -176,6 +182,8 @@ namespace estimation
 
     ROS_DEBUG("Odom callback at time %f ", ros::Time::now().toSec());
     assert(odom_used_);
+
+    ROS_DEBUG("ODOM");
 
     // receive data 
     odom_stamp_ = odom->header.stamp;
@@ -223,10 +231,13 @@ namespace estimation
 
     assert(imu_used_);
 
+    ROS_DEBUG("IMU");
+
     // receive data 
     imu_stamp_ = imu->header.stamp;
     tf::Quaternion orientation;
-    quaternionMsgToTF(imu->orientation, orientation);
+    quaternionMsgToTF(imu->orientation, orientation); // DBG need to normalize
+    orientation.normalize();
     imu_meas_ = tf::Transform(orientation, tf::Vector3(0,0,0));
     for (unsigned int i=0; i<3; i++)
       for (unsigned int j=0; j<3; j++)
@@ -294,6 +305,8 @@ namespace estimation
 
     assert(vo_used_);
 
+    ROS_DEBUG("VO");
+
     // get data
     vo_stamp_ = vo->header.stamp;
     vo_time_  = Time::now();
@@ -334,6 +347,8 @@ namespace estimation
     gps_callback_counter_++;
 
     assert(gps_used_);
+
+    ROS_DEBUG("GPS");    
 
     // get data
     gps_stamp_ = gps->header.stamp;
